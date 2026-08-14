@@ -16,4 +16,5 @@ public class MissionProperties {
     private int maxSignalDelayMinutes;
     private int lowBatteryThreshold;
     private int drillBatteryRequirement;
+    private int maxCommandsPerRover;
 }

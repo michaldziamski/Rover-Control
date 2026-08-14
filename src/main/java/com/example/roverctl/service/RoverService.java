@@ -31,4 +31,16 @@ public class RoverService {
                 .filter(rover -> rover.getStatus().equals(status))
                 .toList();
     }
+
+    public Rover updateBattery(String name, int percent) {
+        if (percent < 0 || percent > 100) {
+            throw new IllegalArgumentException(
+                    "Battery must be between 0 and 100");
+
+        }
+        Rover rover = getByName(name);
+        rover.setBatteryPercent(percent);
+
+        return rover;
+    }
 }
