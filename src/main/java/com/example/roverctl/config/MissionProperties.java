@@ -17,4 +17,5 @@ public class MissionProperties {
     private int lowBatteryThreshold;
     private int drillBatteryRequirement;
     private int maxCommandsPerRover;
+    private int silentRoverHours;
 }

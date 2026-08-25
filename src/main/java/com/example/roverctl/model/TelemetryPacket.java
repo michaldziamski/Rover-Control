@@ -6,13 +6,14 @@ import lombok.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "commands")
+@Table(name = "telemetry_packets")
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Command {
+public class TelemetryPacket {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -21,16 +22,11 @@ public class Command {
     @JoinColumn(name = "rover_id", nullable = false)
     private Rover rover;
 
-    @Enumerated(EnumType.STRING)
-    private CommandType type;
-    @Enumerated(EnumType.STRING)
-    private CommandStatus status;
+    private double temperatureCelsius;
 
-    private Instant earthSentAt;
-    private Instant marsArrivalAt;
-    private Instant ackExpectedAt;
+    private int batteryPercent;
 
-    public boolean hasArrivedOnMars() {
-        return !marsArrivalAt.isAfter(Instant.now());
-    }
+    private Instant recordedAt;
+
+    private Instant receivedAt;
 }

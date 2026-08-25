@@ -4,21 +4,19 @@ import com.example.roverctl.config.MissionProperties;
 import com.example.roverctl.exception.CommandNotFoundException;
 import com.example.roverctl.exception.CommandQuotaExceededException;
 import com.example.roverctl.exception.CommandRejectedException;
-import com.example.roverctl.model.Command;
-import com.example.roverctl.model.CommandStatus;
-import com.example.roverctl.model.CommandType;
-import com.example.roverctl.model.Rover;
-import com.example.roverctl.model.RoverStatus;
+import com.example.roverctl.model.*;
+import com.example.roverctl.repository.CommandRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -30,14 +28,13 @@ public class CommandService {
     private final MissionProperties missionProperties;
     private final Clock clock;
 
-    private final List<Command> commandLog = new ArrayList<>();
+    private final CommandRepository commandRepository;
 
+    @Transactional
     public Command sendCommand(String roverName, CommandType type) {
         Rover rover = roverService.getByName(roverName);
 
-        long commandsForRover = commandLog.stream()
-                .filter(command -> command.getRoverName().equals(roverName))
-                .count();
+        long commandsForRover = commandRepository.countByRoverName(roverName);
 
         if (commandsForRover >= missionProperties.getMaxCommandsPerRover()) {
             throw new CommandQuotaExceededException(
@@ -51,8 +48,7 @@ public class CommandService {
         Instant now = Instant.now(clock);
 
         Command command = Command.builder()
-                .id(UUID.randomUUID())
-                .roverName(rover.getName())
+                .rover(rover)
                 .type(type)
                 .status(CommandStatus.IN_TRANSIT)
                 .earthSentAt(now)
@@ -60,7 +56,7 @@ public class CommandService {
                 .ackExpectedAt(now.plus(delayCalculator.roundTripDelay()))
                 .build();
 
-        commandLog.add(command);
+        commandRepository.save(command);
 
         log.info("Command {} ({}) sent to {} — arrives on Mars in {} min, ack expected in {} min",
                 command.getId(), type, rover.getName(),
@@ -94,46 +90,74 @@ public class CommandService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<Command> getCommandLog() {
-        return List.copyOf(commandLog);
+        return commandRepository.findAllWithRover();
     }
 
-    public Command findById(UUID id) {
-        return commandLog.stream()
-                .filter(command -> command.getId().equals(id))
-                .findFirst()
+    @Transactional(readOnly = true)
+    public List<Command> findByStatus(CommandStatus status) {
+        return commandRepository.findByStatusWithRover(status);
+    }
+
+    @Transactional(readOnly = true)
+    public Command findById(Long id) {
+        return commandRepository.findById(id)
                 .orElseThrow(() ->
                         new CommandNotFoundException(
                                 "Command not found: " + id));
     }
 
+    @Transactional(readOnly = true)
     public List<Command> getCommandsForRover(String roverName) {
-        return commandLog.stream()
-                .filter(command -> command.getRoverName().equals(roverName))
-                .toList();
+        return commandRepository
+                .findByRoverName(roverName, Pageable.unpaged())
+                .getContent();
     }
 
-    public List<Command> findAll(String roverName, CommandStatus status) {
-        return commandLog.stream()
-                .filter(command ->
-                        roverName == null ||
-                                command.getRoverName().equals(roverName))
-                .filter(command ->
-                        status == null ||
-                                command.getStatus().equals(status))
-                .toList();
+    @Transactional(readOnly = true)
+    public Page<Command> findAll(
+            String roverName,
+            CommandStatus status,
+            Pageable pageable) {
+
+        if (roverName != null && status != null) {
+            return commandRepository.findByRoverNameAndStatus(
+                    roverName,
+                    status,
+                    pageable
+            );
+        }
+
+        if (roverName != null) {
+            return commandRepository.findByRoverName(
+                    roverName,
+                    pageable
+            );
+        }
+
+        if (status != null) {
+            return commandRepository.findByStatus(
+                    status,
+                    pageable
+            );
+        }
+
+        return commandRepository.findAll(pageable);
     }
 
+    @Transactional(readOnly = true)
     public List<Command> findPendingForRover(String roverName) {
         roverService.getByName(roverName);
 
-        return commandLog.stream()
-                .filter(command -> command.getRoverName().equals(roverName))
-                .filter(command -> !command.hasArrivedOnMars())
-                .toList();
+        return commandRepository.findPendingByRoverName(
+                roverName,
+                Instant.now(clock)
+        );
     }
 
-    public void cancel(UUID id) {
+    @Transactional
+    public void cancel(Long id) {
         Command command = findById(id);
 
         if (command.hasArrivedOnMars()) {
@@ -141,9 +165,10 @@ public class CommandService {
                     "Command has already arrived on Mars and cannot be cancelled");
         }
 
-        commandLog.remove(command);
+        commandRepository.delete(command);
     }
 
+    @Transactional
     public Command emergencyHibernate(String roverName) {
         Rover rover = roverService.getByName(roverName);
 
@@ -151,8 +176,7 @@ public class CommandService {
         Instant now = Instant.now(clock);
 
         Command command = Command.builder()
-                .id(UUID.randomUUID())
-                .roverName(rover.getName())
+                .rover(rover)
                 .type(CommandType.HIBERNATE)
                 .status(CommandStatus.IN_TRANSIT)
                 .earthSentAt(now)
@@ -160,8 +184,31 @@ public class CommandService {
                 .ackExpectedAt(now.plus(delayCalculator.roundTripDelay()))
                 .build();
 
-        commandLog.add(command);
+        commandRepository.save(command);
 
         return command;
+    }
+
+    @Transactional
+    public void testTransactionRollback(String roverName, CommandType type) {
+        Rover rover = roverService.getByName(roverName);
+
+        Instant now = Instant.now(clock);
+        Duration delay = delayCalculator.oneWayDelay();
+
+        Command command = Command.builder()
+                .rover(rover)
+                .type(type)
+                .status(CommandStatus.IN_TRANSIT)
+                .earthSentAt(now)
+                .marsArrivalAt(now.plus(delay))
+                .ackExpectedAt(now.plus(delayCalculator.roundTripDelay()))
+                .build();
+
+        commandRepository.save(command);
+
+        rover.setLastContactAt(now);
+
+        throw new RuntimeException("TEST ROLLBACK");
     }
 }

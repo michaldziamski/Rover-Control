@@ -6,10 +6,9 @@ import com.example.roverctl.model.CommandType;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.UUID;
 
 public record CommandResponse(
-        UUID id,
+        Long id,
         String roverName,
         CommandType type,
         CommandStatus status,
@@ -31,7 +30,7 @@ public record CommandResponse(
 
         return new CommandResponse(
                 command.getId(),
-                command.getRoverName(),
+                command.getRover().getName(),
                 command.getType(),
                 command.getStatus(),
                 command.getEarthSentAt(),

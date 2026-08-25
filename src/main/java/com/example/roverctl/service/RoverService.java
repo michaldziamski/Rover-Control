@@ -7,7 +7,9 @@ import com.example.roverctl.repository.RoverRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -17,21 +19,25 @@ public class RoverService {
 
     private final RoverRepository roverRepository;
 
+    @Transactional(readOnly = true)
     public List<Rover> findAll() {
         return roverRepository.findAll();
     }
 
+    @Transactional
     public Rover getByName(String name) {
         return roverRepository.findByName(name)
                 .orElseThrow(() -> new RoverNotFoundException("Rover not found: " + name));
     }
 
+    @Transactional(readOnly = true)
     public List<Rover> findByStatus(RoverStatus status) {
         return roverRepository.findAll().stream()
                 .filter(rover -> rover.getStatus().equals(status))
                 .toList();
     }
 
+    @Transactional
     public Rover updateBattery(String name, int percent) {
         if (percent < 0 || percent > 100) {
             throw new IllegalArgumentException(
@@ -42,5 +48,10 @@ public class RoverService {
         rover.setBatteryPercent(percent);
 
         return rover;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Rover> findSilentRovers(Instant threshold) {
+        return roverRepository.findByLastContactAtBefore(threshold);
     }
 }

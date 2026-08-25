@@ -1,7 +1,6 @@
 package com.example.roverctl.service;
 
 import com.example.roverctl.exception.CommunicationBlackoutException;
-import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;

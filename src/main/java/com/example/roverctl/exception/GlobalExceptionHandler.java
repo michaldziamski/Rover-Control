@@ -1,17 +1,17 @@
 package com.example.roverctl.exception;
 
+import com.example.roverctl.model.CommandType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 
 import java.time.Instant;
-import java.util.stream.Collectors;
-import com.example.roverctl.model.CommandType;
 import java.util.Arrays;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 @Slf4j
@@ -133,5 +133,13 @@ public class GlobalExceptionHandler {
                         message,
                         Instant.now()
                 ));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException e) {
+        log.warn("Invalid argument: {}", e.getMessage());
+        return ResponseEntity
+                .status(422)
+                .body(new ErrorResponse("VALIDATION_FAILED", e.getMessage(), Instant.now()));
     }
 }
