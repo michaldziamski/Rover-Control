@@ -1,169 +1,118 @@
-[README-budget-app-final-EN.md](https://github.com/user-attachments/files/31486266/README-budget-app-final-EN.md)
-# Budget App
+[README-Rover-Control-EN.md](https://github.com/user-attachments/files/31486517/README-Rover-Control-EN.md)
+# Rover Control
 
-A full-stack personal budgeting application — a Django REST API paired with a React frontend. It lets users track transactions, accounts, savings goals, and budgets, and includes notifications and Stripe payment integration.
+A Mars rover command-and-control system built with Spring Boot. It simulates realistic Earth–Mars signal delay, manages a command queue, and tracks rover telemetry throughout a mission.
 
 ## About the project
 
-Budget App is a full-stack engineering project where the backend (Django + DRF) handles business logic and data, while the frontend (React) provides the user-facing dashboard. It covers the full user lifecycle — from registration with email verification, through Google login, to day-to-day finance management and payments.
+Rover Control is a backend REST API that models the work of a Mars mission control center:
+
+- every command sent to a rover has a real **delayed arrival time** (the signal takes X minutes to travel from Earth to Mars before the rover "receives" it),
+- rovers have a battery level, position, and status (`OPERATIONAL`, `DEGRADED`, `HIBERNATING`, `LOST`),
+- the system enforces mission rules — e.g. a maximum number of queued commands per rover, or a minimum battery level required to drill,
+- rovers report telemetry that can later be read back through the API.
 
 ## Features
 
-**Account \& authentication**
-
-* Registration with email verification
-* Google OAuth login
-* JWT (access + refresh tokens)
-* Password reset and change, profile editing
-
-**Finance management**
-
-* Accounts (`Account`) — multiple financial accounts per user
-* Transactions (`Transaction`) — income and expenses linked to categories and accounts
-* Categories (`Category`) — custom expense categorization
-* Budgets (`Budget`) — spending limits with alerts on overspend
-* Savings goals (`SavingsGoal`) — with the ability to contribute via Stripe
-
-**Analytics \& reports**
-
-* Dashboard with a financial summary
-* Transaction and category-expense summaries
-* Monthly reports (`monthly-report/<year>/<month>`)
-
-**Notifications**
-
-* Automatic budget alerts (limit exceeded) sent by email
-* In-app notification system with read/unread state
-
-**Payments**
-
-* Stripe integration: checkout sessions, webhooks, payment transaction history
-* Contributions to savings goals processed as real payments
+- **Rover management** — list rovers, view details, update battery level
+- **Sending commands** — `DRIVE`, `TAKE_PHOTO`, `DRILL`, `ADJUST_ANTENNA`, `WAKE`, `HIBERNATE`
+- **Signal delay simulation** — calculates when a command actually arrives on Mars (including handling periodic communication blackouts, e.g. solar conjunction)
+- **Command history and queue** — view completed and pending commands, cancel a command
+- **Emergency mode** — an `emergency-hibernate` command for immediately putting a rover to sleep
+- **Telemetry** — receiving and reading telemetry packets from a rover
+- **Mission status** — an overview of the whole mission's state
+- **Business rule validation** — e.g. rejecting commands when battery is too low, the queue limit is exceeded, or communication is down
 
 ## Tech stack
 
-**Backend**
+- **Java** + **Spring Boot** (Web, Data JPA, Validation)
+- **H2** — embedded file-based database (data stored in `data/rovers.mv.db`), with an H2 console for inspecting data
+- **Lombok** — reduces boilerplate in entities and DTOs
+- **Maven** (Maven Wrapper) — build tool
+- **JUnit** — unit and integration tests (including transactional rollback tests for commands)
 
-* Django 5 + Django REST Framework
-* SimpleJWT — token-based authorization
-* PostgreSQL (in production) via `dj-database-url` and `psycopg`
-* Stripe SDK — payments
-* SendGrid — email delivery (account verification, alerts, password reset)
-* Google Auth — Google login
-* Gunicorn — production server
+## Architecture
 
-**Frontend**
-
-* React 19 + React Router
-* React Hook Form + Yup — forms and validation
-* Axios — API communication
-* Tailwind CSS — styling
-* Recharts — dashboard charts
-* Stripe.js / React Stripe.js — client-side payments
-* React Hot Toast — UI notifications
-
-**Deployment**
-
-* `render.yaml` — Render deployment configuration
-* Firebase Hosting — frontend hosting configuration (`firebase.json`)
-
-## Project structure
+The project is organized in layers:
 
 ```
-budget-app-main/
-├── backend/
-│   ├── core/            # Django project settings, main routing
-│   ├── budgets/         # main app: models, views, serializers
-│   │   ├── models.py           # Category, Account, Transaction, SavingsGoal,
-│   │   │                        # Budget, Notification, PaymentIntegration...
-│   │   ├── views.py            # API endpoint logic
-│   │   ├── serializers.py
-│   │   ├── alert\_service.py    # budget checks and alert delivery
-│   │   ├── email\_service.py    # email delivery via SendGrid
-│   │   ├── stripe\_service.py   # payment integration
-│   │   ├── google\_auth\_service.py
-│   │   └── test\_\*.py           # model, view, serializer, and integration tests
-│   ├── manage.py
-│   └── requirements.txt
-└── frontend/
-    └── src/
-        ├── pages/        # Dashboard, Transactions, Budgets, SavingsGoals,
-        │                  # Accounts, Categories, Notifications, Settings,
-        │                  # Login/Register/ForgotPassword/ResetPassword/VerifyEmail
-        ├── components/    # StripePaymentModal, Layout, ProtectedRoute
-        ├── contexts/      # AuthContext, ThemeContext
-        └── services/      # API client (Axios)
+controller/   - REST endpoints (Rover, Command, Telemetry, Mission Status)
+service/      - business logic, including signal delay calculators
+model/        - JPA entities (Rover, Command, TelemetryPacket) + status enums
+repository/   - data access layer (Spring Data JPA)
+dto/          - request/response objects kept separate from entities
+exception/    - dedicated domain exceptions + a global exception handler
+config/       - mission configuration (parameters from application.properties) and clock config
+runner/       - a demo runner that plays out a sample mission scenario on startup
 ```
 
-## Selected API endpoints
+Worth noting: `ClockConfig` injects the system clock as a bean, which makes time-dependent logic (signal delays, command expiry) easy to test instead of scattering `Instant.now()` calls throughout the code.
 
-Main routes are defined under `budgets` and wired up in `core/urls.py`:
+## Main API endpoints
 
-|Category|Example endpoints|
-|-|-|
-|Auth|`auth/register/`, `auth/token/`, `auth/google-login/`, `auth/verify-email/`|
-|Accounts \& transactions|`accounts/`, `transactions/`, `categories/`|
-|Budgets \& goals|`budgets/`, `savings-goals/`|
-|Analytics|`analytics/summary/`, `analytics/category-expenses/`, `analytics/monthly-report/<year>/<month>/`, `dashboard/`|
-|Notifications|`notifications/`, `notifications/<id>/read/`|
-|Payments|`payments/savings-goals/<id>/checkout/`, `payments/stripe/webhook/`, `payments/transactions/`|
-|Alerts|`alerts/run/`, `alerts/status/`|
+Base prefix: `/api/v1`
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/rovers` | List all rovers |
+| GET | `/rovers/{name}` | Rover details |
+| PATCH | `/rovers/{name}/battery` | Update battery level |
+| POST | `/rovers/{name}/commands` | Send a new command to a rover |
+| GET | `/rovers/{name}/commands` | Command history for a rover |
+| GET | `/rovers/{name}/commands/pending` | Pending commands |
+| POST | `/rovers/{name}/emergency-hibernate` | Emergency-hibernate a rover |
+| POST | `/rovers/{name}/telemetry` | Submit a telemetry packet |
+| GET | `/rovers/{name}/telemetry` | Read a rover's telemetry |
+| GET | `/commands` | List commands (paginated) |
+| GET | `/commands/{id}` | Command details |
+| DELETE | `/commands/{id}` | Cancel a command |
+| GET | `/mission/status` | Overall mission status |
+
+Sample requests are available in the `request.http` file.
+
+## Mission configuration
+
+Mission parameters are set in `application.properties` and injected via `MissionProperties`:
+
+```properties
+mission.name=Mars Exploration Program
+mission.min-signal-delay-minutes=4
+mission.max-signal-delay-minutes=24
+mission.low-battery-threshold=30
+mission.drill-battery-requirement=50
+mission.max-commands-per-rover=5
+```
+
+This makes it easy to tune signal delay, battery thresholds, and queue limits without touching the code.
 
 ## Running locally
 
-### Backend
+Requires a JDK compatible with Spring Boot 4 (Java 21+).
 
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\\Scripts\\activate
-pip install -r requirements.txt
+# clone the repository
+git clone https://github.com/michaldziamski/Rover-Control.git
+cd Rover-Control
 
-# set up environment variables (e.g. in a .env file):
-# DATABASE\_URL, STRIPE\_SECRET\_KEY, STRIPE\_PUBLISHABLE\_KEY,
-# STRIPE\_WEBHOOK\_SECRET, SENDGRID\_API\_KEY,
-# GOOGLE\_OAUTH2\_CLIENT\_ID, GOOGLE\_OAUTH2\_CLIENT\_SECRET
-
-python manage.py migrate
-python manage.py runserver
+# run the application (Maven Wrapper)
+./mvnw spring-boot:run
 ```
 
-### Frontend
+The application starts on `http://localhost:8080` by default. The H2 console is available at `/h2-console` (JDBC URL: `jdbc:h2:file:./data/rovers`).
+
+### Tests
 
 ```bash
-cd frontend
-npm install
-npm start
+./mvnw test
 ```
-
-The frontend runs on `http://localhost:3000` by default and talks to the backend API.
-
-### Backend tests
-
-```bash
-cd backend
-python manage.py test
-```
-
-The project includes tests for models, views, and serializers, plus integration tests (e.g. for email verification and Google login).
-
-## Environment variables
-
-The app relies on a few external services that need to be configured via environment variables:
-
-* **Stripe** — `STRIPE\_SECRET\_KEY`, `STRIPE\_PUBLISHABLE\_KEY`, `STRIPE\_WEBHOOK\_SECRET`
-* **SendGrid** — `SENDGRID\_API\_KEY` (verification and alert emails)
-* **Google OAuth** — `GOOGLE\_OAUTH2\_CLIENT\_ID`, `GOOGLE\_OAUTH2\_CLIENT\_SECRET`
-* **Database** — `DATABASE\_URL` (PostgreSQL in production)
 
 ## Possible next steps
 
-* PDF/CSV report export
-* Shared household budgets across multiple users
-* A mobile app built on the same API
-* Broader frontend test coverage (currently concentrated on the backend)
+- Authentication/authorization for the mission control panel
+- A simple frontend to visualize rover positions and the command queue
+- WebSockets for real-time telemetry streaming
+- Migrating from H2 to PostgreSQL for a production deployment
 
-\---
+---
 
-An engineering project combining Django REST Framework with a React frontend.
-
+Built as a learning project for Spring Boot and for designing systems with time-based/domain logic.
