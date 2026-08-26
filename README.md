@@ -105,14 +105,6 @@ The application starts on `http://localhost:8080` by default. The H2 console is 
 ```bash
 ./mvnw test
 ```
-
-## Possible next steps
-
-- Authentication/authorization for the mission control panel
-- A simple frontend to visualize rover positions and the command queue
-- WebSockets for real-time telemetry streaming
-- Migrating from H2 to PostgreSQL for a production deployment
-
 ---
 
 Built as a learning project for Spring Boot and for designing systems with time-based/domain logic.
