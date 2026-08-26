@@ -37,9 +37,6 @@ public interface CommandRepository extends JpaRepository<Command, Long> {
 
     long countByRoverName(String name);
 
-    List<Command> findByMarsArrivalAtAfter(Instant now);
-
-    List<Command> findByStatusOrderByEarthSentAtDesc(CommandStatus status);
 
     @Query("""
             SELECT c
@@ -64,17 +61,6 @@ public interface CommandRepository extends JpaRepository<Command, Long> {
             """)
     List<Command> findByStatusWithRover(CommandStatus status);
 
-    @Query("""
-            SELECT c
-            FROM Command c
-            JOIN FETCH c.rover
-            WHERE c.rover.name = :name
-              AND c.status = :status
-            """)
-    List<Command> findByRoverNameAndStatusWithRover(
-            String name,
-            CommandStatus status
-    );
 
     @Query("""
             SELECT c

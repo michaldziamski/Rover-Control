@@ -30,7 +30,7 @@ public class Command {
     private Instant marsArrivalAt;
     private Instant ackExpectedAt;
 
-    public boolean hasArrivedOnMars() {
-        return !marsArrivalAt.isAfter(Instant.now());
+    public boolean hasArrivedOnMars(Instant now) {
+        return now.isAfter(marsArrivalAt);
     }
 }

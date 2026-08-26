@@ -24,7 +24,7 @@ public class RoverService {
         return roverRepository.findAll();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public Rover getByName(String name) {
         return roverRepository.findByName(name)
                 .orElseThrow(() -> new RoverNotFoundException("Rover not found: " + name));
@@ -32,9 +32,7 @@ public class RoverService {
 
     @Transactional(readOnly = true)
     public List<Rover> findByStatus(RoverStatus status) {
-        return roverRepository.findAll().stream()
-                .filter(rover -> rover.getStatus().equals(status))
-                .toList();
+        return roverRepository.findByStatus(status);
     }
 
     @Transactional

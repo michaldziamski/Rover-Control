@@ -1,6 +1,5 @@
 package com.example.roverctl.exception;
 
-import com.example.roverctl.model.CommandType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -8,6 +7,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import tools.jackson.databind.exc.InvalidFormatException;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -18,68 +18,47 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(RoverNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleRoverNotFound(
-            RoverNotFoundException e) {
+    public ResponseEntity<ErrorResponse> handleRoverNotFound(RoverNotFoundException e) {
 
         log.warn("Rover not found: {}", e.getMessage());
 
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
-                .body(new ErrorResponse(
-                        "ROVER_NOT_FOUND",
-                        e.getMessage(),
-                        Instant.now()
-                ));
+                .body(new ErrorResponse("ROVER_NOT_FOUND", e.getMessage(), Instant.now()));
     }
 
     @ExceptionHandler(CommandNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleCommandNotFound(
-            CommandNotFoundException e) {
+    public ResponseEntity<ErrorResponse> handleCommandNotFound(CommandNotFoundException e) {
 
         log.warn("Command not found: {}", e.getMessage());
 
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
-                .body(new ErrorResponse(
-                        "COMMAND_NOT_FOUND",
-                        e.getMessage(),
-                        Instant.now()
-                ));
+                .body(new ErrorResponse("COMMAND_NOT_FOUND", e.getMessage(), Instant.now()));
     }
 
     @ExceptionHandler(CommandRejectedException.class)
-    public ResponseEntity<ErrorResponse> handleCommandRejected(
-            CommandRejectedException e) {
+    public ResponseEntity<ErrorResponse> handleCommandRejected(CommandRejectedException e) {
 
         log.warn("Command rejected: {}", e.getMessage());
 
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
-                .body(new ErrorResponse(
-                        "COMMAND_REJECTED",
-                        e.getMessage(),
-                        Instant.now()
-                ));
+                .body(new ErrorResponse("COMMAND_REJECTED", e.getMessage(), Instant.now()));
     }
 
     @ExceptionHandler(CommandQuotaExceededException.class)
-    public ResponseEntity<ErrorResponse> handleCommandQuotaExceeded(
-            CommandQuotaExceededException e) {
+    public ResponseEntity<ErrorResponse> handleCommandQuotaExceeded(CommandQuotaExceededException e) {
 
         log.warn("Command quota exceeded: {}", e.getMessage());
 
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
-                .body(new ErrorResponse(
-                        "QUOTA_EXCEEDED",
-                        e.getMessage(),
-                        Instant.now()
-                ));
+                .body(new ErrorResponse("QUOTA_EXCEEDED", e.getMessage(), Instant.now()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidation(
-            MethodArgumentNotValidException e) {
+    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException e) {
 
         String message = e.getBindingResult()
                 .getFieldErrors()
@@ -92,47 +71,31 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(422)
-                .body(new ErrorResponse(
-                        "VALIDATION_FAILED",
-                        message,
-                        Instant.now()
-                ));
+                .body(new ErrorResponse("VALIDATION_FAILED", message, Instant.now()));
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleUnexpected(
-            Exception e) {
+    public ResponseEntity<ErrorResponse> handleUnexpected(Exception e) {
 
         log.error("Unexpected error", e);
 
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ErrorResponse(
-                        "INTERNAL_ERROR",
-                        "Unexpected error occurred",
-                        Instant.now()
-                ));
+                .body(new ErrorResponse("INTERNAL_ERROR", "Unexpected error occurred", Instant.now()));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponse> handleMessageNotReadable(
-            HttpMessageNotReadableException e) {
+    public ResponseEntity<ErrorResponse> handleMessageNotReadable(HttpMessageNotReadableException e) {
+        Throwable cause = e.getCause();
+        String message = "Malformed request body";
 
-        log.warn("Invalid request body: {}", e.getMessage());
+        if (cause instanceof InvalidFormatException ife && ife.getTargetType().isEnum()) {
+            message = "Invalid value. Allowed values: " + Arrays.toString(ife.getTargetType().getEnumConstants());
+        }
 
-        String message = "Invalid enum value. Allowed values: "
-                + String.join(", ",
-                Arrays.stream(CommandType.values())
-                        .map(Enum::name)
-                        .toList());
-
-        return ResponseEntity
-                .status(422)
-                .body(new ErrorResponse(
-                        "VALIDATION_FAILED",
-                        message,
-                        Instant.now()
-                ));
+        log.warn("Bad request body: {}", message);
+        return ResponseEntity.status(422)
+                .body(new ErrorResponse("VALIDATION_FAILED", message, Instant.now()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

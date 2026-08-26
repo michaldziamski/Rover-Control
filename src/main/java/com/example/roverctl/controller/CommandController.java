@@ -11,7 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/commands")
+@RequestMapping("/api/v1/commands")
 @RequiredArgsConstructor
 public class CommandController {
 
@@ -29,12 +29,6 @@ public class CommandController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cancelCommand(@PathVariable Long id) {
         commandService.cancel(id);
-    }
-
-    @PostMapping("/test-rollback")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void testRollback(@RequestParam String roverName, @RequestParam CommandType type) {
-        commandService.testTransactionRollback(roverName, type);
     }
 
     @GetMapping("/{id}")

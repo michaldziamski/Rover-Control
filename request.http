@@ -3,27 +3,27 @@
 ### =====================================================
 
 ### 1. Wszystkie łaziki
-GET http://localhost:8080/api/rovers
+GET http://localhost:8080/api/v1/rovers
 
 ###
 
 ### 2. Łaziki o statusie OPERATIONAL
-GET http://localhost:8080/api/rovers?status=OPERATIONAL
+GET http://localhost:8080/api/v1/rovers?status=OPERATIONAL
 
 ###
 
 ### 3. Łaziki o statusie LOST
-GET http://localhost:8080/api/rovers?status=LOST
+GET http://localhost:8080/api/v1/rovers?status=LOST
 
 ###
 
 ### 4. Jeden łazik
-GET http://localhost:8080/api/rovers/Perseverance
+GET http://localhost:8080/api/v1/rovers/Perseverance
 
 ###
 
 ### 5. Nieistniejący łazik — oczekiwane 404
-GET http://localhost:8080/api/rovers/Voyager
+GET http://localhost:8080/api/v1/rovers/Voyager
 
 
 ### =====================================================
@@ -31,7 +31,7 @@ GET http://localhost:8080/api/rovers/Voyager
 ### =====================================================
 
 ### 6. Zmiana baterii
-PATCH http://localhost:8080/api/rovers/Perseverance/battery
+PATCH http://localhost:8080/api/v1/rovers/Perseverance/battery
 Content-Type: application/json
 
 {
@@ -41,7 +41,7 @@ Content-Type: application/json
 ###
 
 ### 7. Bateria poza zakresem — oczekiwane 422
-PATCH http://localhost:8080/api/rovers/Perseverance/battery
+PATCH http://localhost:8080/api/v1/rovers/Perseverance/battery
 Content-Type: application/json
 
 {
@@ -54,12 +54,12 @@ Content-Type: application/json
 ### =====================================================
 
 ### 8. Historia komend Perseverance
-GET http://localhost:8080/api/rovers/Perseverance/commands
+GET http://localhost:8080/api/v1/rovers/Perseverance/commands
 
 ###
 
 ### 9. Wyślij TAKE_PHOTO
-POST http://localhost:8080/api/rovers/Perseverance/commands
+POST http://localhost:8080/api/v1/rovers/Perseverance/commands
 Content-Type: application/json
 
 {
@@ -69,7 +69,7 @@ Content-Type: application/json
 ###
 
 ### 10. Wyślij DRILL
-POST http://localhost:8080/api/rovers/Perseverance/commands
+POST http://localhost:8080/api/v1/rovers/Perseverance/commands
 Content-Type: application/json
 
 {
@@ -79,7 +79,7 @@ Content-Type: application/json
 ###
 
 ### 11. Komenda do Opportunity — LOST — oczekiwane 409
-POST http://localhost:8080/api/rovers/Opportunity/commands
+POST http://localhost:8080/api/v1/rovers/Opportunity/commands
 Content-Type: application/json
 
 {
@@ -89,7 +89,7 @@ Content-Type: application/json
 ###
 
 ### 12. DRILL do łazika z niską baterią — oczekiwane 409
-POST http://localhost:8080/api/rovers/Curiosity/commands
+POST http://localhost:8080/api/v1/rovers/Curiosity/commands
 Content-Type: application/json
 
 {
@@ -99,7 +99,7 @@ Content-Type: application/json
 ###
 
 ### 13. Komenda bez type — oczekiwane 422
-POST http://localhost:8080/api/rovers/Perseverance/commands
+POST http://localhost:8080/api/v1/rovers/Perseverance/commands
 Content-Type: application/json
 
 {
@@ -108,22 +108,22 @@ Content-Type: application/json
 ###
 
 ### 14. Wszystkie komendy
-GET http://localhost:8080/api/commands
+GET http://localhost:8080/api/v1/commands
 
 ###
 
 ### 15. Komendy konkretnego łazika
-GET http://localhost:8080/api/commands?roverName=Perseverance
+GET http://localhost:8080/api/v1/commands?roverName=Perseverance
 
 ###
 
 ### 16. Komendy IN_TRANSIT
-GET http://localhost:8080/api/commands?status=IN_TRANSIT
+GET http://localhost:8080/api/v1/commands?status=IN_TRANSIT
 
 ###
 
 ### 17. Filtrowanie po łaziku i statusie
-GET http://localhost:8080/api/commands?roverName=Perseverance&status=IN_TRANSIT
+GET http://localhost:8080/api/v1/commands?roverName=Perseverance&status=IN_TRANSIT
 
 
 ### =====================================================
@@ -131,23 +131,23 @@ GET http://localhost:8080/api/commands?roverName=Perseverance&status=IN_TRANSIT
 ### =====================================================
 
 ### 18. Status misji
-GET http://localhost:8080/api/mission/status
+GET http://localhost:8080/api/v1/mission/status
 
 ### Pierwsza strona
-GET http://localhost:8080/api/commands?page=0&size=2
+GET http://localhost:8080/api/v1/commands?page=0&size=2
 
 ###
 
 ### Druga strona
-GET http://localhost:8080/api/commands?page=1&size=2
+GET http://localhost:8080/api/v1/commands?page=1&size=2
 
 ###
 
 ### Paginacja + filtr
-GET http://localhost:8080/api/commands?roverName=Perseverance&page=0&size=5
+GET http://localhost:8080/api/v1/commands?roverName=Perseverance&page=0&size=5
 
 ### Pending commands
-GET http://localhost:8080/api/rovers/Perseverance/commands/pending
+GET http://localhost:8080/api/v1/rovers/Perseverance/commands/pending
 
 ### Emergency hibernate
-POST http://localhost:8080/api/rovers/Curiosity/emergency-hibernate
+POST http://localhost:8080/api/v1/rovers/Curiosity/emergency-hibernate

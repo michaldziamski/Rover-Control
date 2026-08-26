@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/rovers")
+@RequestMapping("/api/v1/rovers")
 @RequiredArgsConstructor
 public class RoverController {
 
@@ -54,13 +54,7 @@ public class RoverController {
     public RoverResponse updateBattery(
             @PathVariable String name,
             @Valid @RequestBody UpdateBatteryRequest request) {
-
-        Rover rover = roverService.updateBattery(
-                name,
-                request.batteryPercent()
-        );
-
-        return RoverResponse.from(rover);
+        return RoverResponse.from(roverService.updateBattery(name, request.batteryPercent()));
     }
 
     @PostMapping("/{name}/commands")
@@ -73,7 +67,7 @@ public class RoverController {
 
         return ResponseEntity
                 .status(HttpStatus.ACCEPTED)
-                .header("Location", "/api/commands/" + command.getId())
+                .header("Location", "/api/v1/commands/" + command.getId())
                 .body(body);
     }
 

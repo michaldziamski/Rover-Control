@@ -35,7 +35,6 @@ public class CommandService {
         Rover rover = roverService.getByName(roverName);
 
         long commandsForRover = commandRepository.countByRoverName(roverName);
-
         if (commandsForRover >= missionProperties.getMaxCommandsPerRover()) {
             throw new CommandQuotaExceededException(
                     "Rover " + roverName + " has reached the command limit of "
@@ -44,23 +43,10 @@ public class CommandService {
 
         validateCommand(rover, type);
 
-        Duration delay = delayCalculator.oneWayDelay();
-        Instant now = Instant.now(clock);
-
-        Command command = Command.builder()
-                .rover(rover)
-                .type(type)
-                .status(CommandStatus.IN_TRANSIT)
-                .earthSentAt(now)
-                .marsArrivalAt(now.plus(delay))
-                .ackExpectedAt(now.plus(delayCalculator.roundTripDelay()))
-                .build();
-
+        Command command = buildCommand(rover, type);
         commandRepository.save(command);
 
-        log.info("Command {} ({}) sent to {} — arrives on Mars in {} min, ack expected in {} min",
-                command.getId(), type, rover.getName(),
-                delay.toMinutes(), delayCalculator.roundTripDelay().toMinutes());
+        log.info("Command {} ({}) sent to {}", command.getId(), type, rover.getName());
 
         return command;
     }
@@ -90,6 +76,21 @@ public class CommandService {
         }
     }
 
+    private Command buildCommand(Rover rover, CommandType type) {
+        Instant now = Instant.now(clock);
+        Duration delay = delayCalculator.oneWayDelay();
+        Duration roundTrip = delayCalculator.roundTripDelay();
+
+        return Command.builder()
+                .rover(rover)
+                .type(type)
+                .status(CommandStatus.IN_TRANSIT)
+                .earthSentAt(now)
+                .marsArrivalAt(now.plus(delay))
+                .ackExpectedAt(now.plus(roundTrip))
+                .build();
+    }
+
     @Transactional(readOnly = true)
     public List<Command> getCommandLog() {
         return commandRepository.findAllWithRover();
@@ -110,9 +111,8 @@ public class CommandService {
 
     @Transactional(readOnly = true)
     public List<Command> getCommandsForRover(String roverName) {
-        return commandRepository
-                .findByRoverName(roverName, Pageable.unpaged())
-                .getContent();
+        roverService.getByName(roverName);
+        return commandRepository.findByRoverNameWithRover(roverName);
     }
 
     @Transactional(readOnly = true)
@@ -156,11 +156,17 @@ public class CommandService {
         );
     }
 
+    private Command getCommandOrThrow(Long id) {
+        return commandRepository.findById(id)
+                .orElseThrow(() -> new CommandNotFoundException("Command not found: " + id));
+    }
+
     @Transactional
     public void cancel(Long id) {
-        Command command = findById(id);
+        Command command = getCommandOrThrow(id);
+        Instant now = Instant.now(clock);
 
-        if (command.hasArrivedOnMars()) {
+        if (command.hasArrivedOnMars(now)) {
             throw new CommandRejectedException(
                     "Command has already arrived on Mars and cannot be cancelled");
         }
@@ -172,43 +178,9 @@ public class CommandService {
     public Command emergencyHibernate(String roverName) {
         Rover rover = roverService.getByName(roverName);
 
-        Duration delay = delayCalculator.oneWayDelay();
-        Instant now = Instant.now(clock);
-
-        Command command = Command.builder()
-                .rover(rover)
-                .type(CommandType.HIBERNATE)
-                .status(CommandStatus.IN_TRANSIT)
-                .earthSentAt(now)
-                .marsArrivalAt(now.plus(delay))
-                .ackExpectedAt(now.plus(delayCalculator.roundTripDelay()))
-                .build();
-
+        Command command = buildCommand(rover, CommandType.HIBERNATE);
         commandRepository.save(command);
 
         return command;
-    }
-
-    @Transactional
-    public void testTransactionRollback(String roverName, CommandType type) {
-        Rover rover = roverService.getByName(roverName);
-
-        Instant now = Instant.now(clock);
-        Duration delay = delayCalculator.oneWayDelay();
-
-        Command command = Command.builder()
-                .rover(rover)
-                .type(type)
-                .status(CommandStatus.IN_TRANSIT)
-                .earthSentAt(now)
-                .marsArrivalAt(now.plus(delay))
-                .ackExpectedAt(now.plus(delayCalculator.roundTripDelay()))
-                .build();
-
-        commandRepository.save(command);
-
-        rover.setLastContactAt(now);
-
-        throw new RuntimeException("TEST ROLLBACK");
     }
 }

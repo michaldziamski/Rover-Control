@@ -18,12 +18,12 @@ public record CommandResponse(
         long minutesUntilArrival
 ) {
 
-    public static CommandResponse from(Command command) {
+    public static CommandResponse from(Command command, Instant now) {
 
         long minutesUntilArrival = Math.max(
                 0,
                 Duration.between(
-                        Instant.now(),
+                        now,
                         command.getMarsArrivalAt()
                 ).toMinutes()
         );
@@ -38,5 +38,9 @@ public record CommandResponse(
                 command.getAckExpectedAt(),
                 minutesUntilArrival
         );
+    }
+
+    public static CommandResponse from(Command command) {
+        return from(command, Instant.now());
     }
 }
